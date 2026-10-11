@@ -24,14 +24,14 @@ jobs:
         tools: calcit,caps
         deps-file: deps.cirru
         caps-version: "0.1.1"
-    - run: caps --ci
+    - run: caps --strict --ci
     - run: yarn install --immutable
     - name: Check current Calcit code
       run: |
         caps verify --toolchain
         calcit edit format
         git diff --exit-code -- calcit.cirru
-        calcit --check-only
+        calcit --check-only --all-defs --format json
         calcit --check-only --ns app.browser --ns app.comp.container --ns app.config --ns app.main --ns app.schema --ns app.updater --summary-only
         calcit test --require-match
     - run: yarn compile && yarn build
