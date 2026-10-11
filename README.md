@@ -4,10 +4,10 @@ Line Spin
 
 ### Development
 
-Use the compiler version in `deps.cirru` (Calcit 0.29.0-alpha.30) with the matching `@calcit/procs`. This browser dependency chain uses the published Phlox 0.7.12, touch-control 0.0.24 and js-ffi 0.2.1-alpha.16 releases.
+Use the compiler version in `deps.cirru` (stable Calcit 0.29.0) with the matching `@calcit/procs`. This browser dependency chain uses Phlox 0.7.13, touch-control 0.0.25 and js-ffi 0.2.1-alpha.16 releases. Phlox includes the Struct keyboard traversal and Pointed Prompt callback fixes.
 
 ```sh
-caps --ci
+caps --strict --ci
 yarn install --immutable
 calcit --check-only
 calcit test --require-match
