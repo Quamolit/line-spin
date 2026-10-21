@@ -43,7 +43,11 @@
                 cursor $ []
                 state $ match (get states :data)
                   (:none) spin-state
-                  (:some value) (assert-type value 'app.schema/SpinState)
+                  (:some value)
+                    if (struct? value)
+                      struct-match value (SpinState checked checked)
+                        _ _ $ raise |Expected-SpinState
+                      raise |Expected-SpinState
                 bottom $ - (viewport-height) 40
                 from $ :from state
                 to $ :to state
@@ -59,8 +63,8 @@
                       :alpha 1
                     -> trails rest $ mapcat $ fn (line)
                       []
-                        g :move-to $ option:unwrap $ get line :start
-                        g :line-to $ option:unwrap $ get line :end
+                        g :move-to $ :start line
+                        g :line-to $ :end line
                 comp-drag-point (>> states :from)
                   {} (:position from) (:unit 1) (:title |From) (:radius 4)
                     :on-change $ fn (position d!)
@@ -127,7 +131,7 @@
                       d! cursor $ assoc state :theta2 $ decode-map-as value Number
                       , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Dynamic)
+          :schema $ :: 'Fn $ {} (:return 'phlox.schema/PhloxElement)
             :args $ [] 'app.schema/Store
         'compute-trails $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn compute-trails (state)
@@ -145,39 +149,34 @@
                           theta-from $ * idx $ :v1 state
                           theta-end $ + (:theta2 state)
                             * idx $ :v2 state
-                        {}
-                          :start $ complex/add center $ complex/times
+                        Trail :start
+                          complex/add center $ complex/times
                             [] (:r1 state) 0
                             [] (cos theta-from) (sin theta-from)
-                          :end $ complex/add center $ complex/times
+                          , :end $ complex/add center $ complex/times
                             [] (:r2 state) 0
                             [] (cos theta-end) (sin theta-end)
           :examples $ []
           :schema $ :: 'Fn $ {}
             :args $ [] 'app.schema/SpinState
-            :return $ :: 'List $ :: 'Map 'Tag (:: 'List 'Number)
+            :return $ :: 'List 'app.schema/Trail
           :tests $ [] $ %{} 'TestEntry (:name |geometry-and-zero-steps)
             :code $ quote $ let
                 state $ app.schema/SpinState :from ([] 0 0) :to ([] 10 0) :steps 2 :r1 1 :r2 2 :theta2 0 :v1 0 :v2 0
               assert=
                 []
-                  {}
-                    :start $ [] 1 0
-                    :end $ [] 2 0
-                  {}
-                    :start $ [] 6 0
-                    :end $ [] 7 0
+                  app.schema/Trail :start ([] 1 0) :end $ [] 2 0
+                  app.schema/Trail :start ([] 6 0) :end $ [] 7 0
                 compute-trails state
               assert= ([])
                 compute-trails $ assoc state :steps 0
-            :tags $ #{} :unit
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require
             phlox.core :refer $ defcomp >> hslx container graphics g
             phlox.comp.drag-point :refer $ comp-drag-point
             phlox.comp.slider :refer $ comp-slider
-            app.schema :refer $ SpinState spin-state
+            app.schema :refer $ SpinState spin-state Trail
             js-ffi.browser :refer $ viewport-width viewport-height
             phlox.complex :as complex
     'app.config $ %{} 'FileEntry
@@ -202,24 +201,34 @@
           :code $ quote $ defn decode-op (raw-op)
             match raw-op
               (:states cursor data)
-                %:: schema/Op :states
+                schema/Op :states
                   decode-map-as cursor $ :: 'List 'Tag
                   , data
-              (:add-x) (%:: schema/Op :add-x)
+              (:add-x) (schema/Op :add-x)
               (:tab tab)
-                %:: schema/Op :tab $ decode-map-as tab Tag
+                schema/Op :tab $ decode-map-as tab 'Tag
               (:hydrate-storage restored)
-                %:: schema/Op :hydrate-storage $ assert-type restored 'app.schema/Store
-              _ $ raise "|Unknown operation"
+                schema/Op :hydrate-storage $ if (struct? restored)
+                  struct-match restored (schema/Store checked checked)
+                    _ _ $ raise |Expected-Store
+                  raise |Expected-Store
+              _ $ raise |Unknown-operation
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/Op)
             :args $ [] 'Dynamic
           :tests $ [] $ %{} 'TestEntry (:name |anonymous-state-operation)
-            :code $ quote $ assert=
-              %:: schema/Op :states ([] :r1)
-                {} $ :data 110
-              decode-op $ :: :states ([] :r1)
-                {} $ :data 110
+            :code $ quote $ let
+                original schema/store
+              assert=
+                schema/Op :states ([] :r1)
+                  {} $ :data 110
+                decode-op $ :: :states ([] :r1)
+                  {} $ :data 110
+              match
+                decode-op $ :: :hydrate-storage original
+                (:hydrate-storage restored)
+                  assert |Preserve-original-Store $ identical? original restored
+                _ $ raise |Expected-hydrate-operation
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (raw-op)
             let
@@ -303,6 +312,12 @@
             :states $ :: 'Map 'Tag 'Dynamic
           :examples $ []
           :schema $ :: 'StructDef
+        'Trail $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defstruct Trail
+            :start $ :: 'List 'Number
+            :end $ :: 'List 'Number
+          :examples $ []
+          :schema $ :: 'StructDef
         'spin-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def spin-state
             SpinState :from ([] 100 200) :to ([] 800 200) :steps 200 :r1 100 :r2 80 :theta2 100 :v1 0.18 :v2 1
@@ -326,11 +341,13 @@
                   , 0 $ inc (:x store)
               (:tab tab) (assoc store :tab tab)
               (:states cursor new-state)
-                assoc store :states $ assoc-in (:states store) (conj cursor :data) new-state
+                assoc store :states $ decode-map-as
+                  assoc-in (:states store) (conj cursor :data) new-state
+                  :: 'Map 'Tag 'Dynamic
               (:hydrate-storage restored) restored
           :examples $ []
           :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
             :args $ [] 'app.schema/Store 'app.schema/Op
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
-          :require $ app.schema :refer $ [] Store Op
+          :require $ app.schema :refer $ Store Op
