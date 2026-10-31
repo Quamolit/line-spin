@@ -12,12 +12,10 @@
       :defs $ {}
         'FontLoaderHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait FontLoaderHost
-            .load $ :: 'Fn $ {}
-              :args $ [] 'app.browser/FontLoaderHost
-              :return 'js-ffi.shared/PromiseHost
+            .load $ quote $ Fn app.browser/FontLoaderHost (-> js-ffi.shared/PromiseHost)
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
-          :schema $ :: 'Trait
+          :schema $ quote Trait
         'wait-for-font! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn wait-for-font! (ready!)
             let
@@ -26,11 +24,10 @@
               pending .then! $ fn (event) (ready!)
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] $ :: 'Fn
-              {} (:return 'Unit)
-                :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn
+            Fn $ -> Unit
+            -> Unit
+            :features :js-ffi
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.browser
           :require $ |fontfaceobserver-es :default FontFaceObserver
@@ -131,8 +128,7 @@
                       d! cursor $ assoc state :theta2 $ decode-map-as value Number
                       , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'phlox.schema/PhloxElement)
-            :args $ [] 'app.schema/Store
+          :schema $ quote $ Fn app.schema/Store (-> phlox.schema/PhloxElement)
         'compute-trails $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn compute-trails (state)
             let
@@ -157,9 +153,8 @@
                             [] (:r2 state) 0
                             [] (cos theta-end) (sin theta-end)
           :examples $ []
-          :schema $ :: 'Fn $ {}
-            :args $ [] 'app.schema/SpinState
-            :return $ :: 'List 'app.schema/Trail
+          :schema $ quote $ Fn app.schema/SpinState
+            -> $ List app.schema/Trail
           :tests $ [] $ %{} 'TestEntry (:name |geometry-and-zero-steps)
             :code $ quote $ let
                 state $ app.schema/SpinState :from ([] 0 0) :to ([] 10 0) :steps 2 :r1 1 :r2 2 :theta2 0 :v1 0 :v2 0
@@ -196,7 +191,7 @@
         '*store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *store schema/store
           :examples $ []
-          :schema $ :: 'Ref 'app.schema/Store
+          :schema $ quote $ Ref app.schema/Store
         'decode-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-op (raw-op)
             match raw-op
@@ -214,8 +209,7 @@
                   raise |Expected-Store
               _ $ raise |Unknown-operation
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Op)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> app.schema/Op)
           :tests $ [] $ %{} 'TestEntry (:name |anonymous-state-operation)
             :code $ quote $ let
                 original schema/store
@@ -237,8 +231,7 @@
               reset! *store $ updater @*store op
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ [] 'Dynamic
+          :schema $ quote $ Fn Dynamic (-> Unit)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             if dev? $ load-console-formatter!
@@ -249,9 +242,7 @@
             println "|App Started"
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if (js-nullish? build-errors)
@@ -263,16 +254,13 @@
               hud! |error build-errors
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
-            :features $ #{} :js-ffi
+          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render! (comp-container @*store) dispatch! $ {}
             , &unit
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'Unit)
-            :args $ []
+          :schema $ quote $ Fn (-> Unit)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
@@ -289,16 +277,18 @@
       :defs $ {}
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :states (:: 'List 'Tag) 'Dynamic
+            :states
+              quote $ List Tag
+              , 'Dynamic
             :add-x
             :tab 'Tag
             :hydrate-storage 'app.schema/Store
           :examples $ []
-          :schema $ :: 'EnumDef
+          :schema $ quote EnumDef
         'SpinState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct SpinState
-            :from $ :: 'List 'Number
-            :to $ :: 'List 'Number
+            :from $ quote $ List Number
+            :to $ quote $ List Number
             :steps 'Number
             :r1 'Number
             :r2 'Number
@@ -306,28 +296,28 @@
             :v1 'Number
             :v2 'Number
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store (:tab 'Tag) (:x 'Number)
-            :states $ :: 'Map 'Tag 'Dynamic
+            :states $ quote $ Map Tag Dynamic
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'Trail $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Trail
-            :start $ :: 'List 'Number
-            :end $ :: 'List 'Number
+            :start $ quote $ List Number
+            :end $ quote $ List Number
           :examples $ []
-          :schema $ :: 'StructDef
+          :schema $ quote StructDef
         'spin-state $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def spin-state
             SpinState :from ([] 100 200) :to ([] 800 200) :steps 200 :r1 100 :r2 80 :theta2 100 :v1 0.18 :v2 1
           :examples $ []
-          :schema $ :: 'app.schema/SpinState
+          :schema $ quote app.schema/SpinState
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             Store :tab :drafts :x 0 :states $ {}
           :examples $ []
-          :schema $ :: 'app.schema/Store
+          :schema $ quote app.schema/Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
@@ -346,8 +336,7 @@
                   :: 'Map 'Tag 'Dynamic
               (:hydrate-storage restored) restored
           :examples $ []
-          :schema $ :: 'Fn $ {} (:return 'app.schema/Store)
-            :args $ [] 'app.schema/Store 'app.schema/Op
+          :schema $ quote $ Fn app.schema/Store app.schema/Op (-> app.schema/Store)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require $ app.schema :refer $ Store Op
