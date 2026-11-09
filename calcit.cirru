@@ -12,7 +12,7 @@
       :defs $ {}
         'FontLoaderHost $ %{} 'CodeEntry (:doc |)
           :code $ quote $ deftrait FontLoaderHost
-            .load $ quote $ Fn app.browser/FontLoaderHost (-> js-ffi.shared/PromiseHost)
+            .load $ Fn app.browser/FontLoaderHost $ -> js-ffi.shared/PromiseHost
           :examples $ []
           :ffi $ {} (:backend :js) (:kind :external-object) (:target :browser)
           :schema $ quote Trait
@@ -37,7 +37,6 @@
           :code $ quote $ defcomp comp-container (store)
             let
                 states $ :states store
-                cursor $ []
                 state $ match (get states :data)
                   (:none) spin-state
                   (:some value)
@@ -65,12 +64,14 @@
                 comp-drag-point (>> states :from)
                   {} (:position from) (:unit 1) (:title |From) (:radius 4)
                     :on-change $ fn (position d!)
-                      d! cursor $ assoc state :from $ decode-map-as position (:: 'List 'Number)
+                      d! $ app.schema/Op :spin-state $ assoc state :from
+                        decode-map-as position $ List Number
                       , &unit
                 comp-drag-point (>> states :to)
                   {} (:position to) (:unit 1) (:title |To) (:radius 4)
                     :on-change $ fn (position d!)
-                      d! cursor $ assoc state :to $ decode-map-as position (:: 'List 'Number)
+                      d! $ app.schema/Op :spin-state $ assoc state :to
+                        decode-map-as position $ List Number
                       , &unit
                 comp-slider (>> states :steps)
                   {}
@@ -80,7 +81,7 @@
                     :unit 1
                     :round? true
                     :on-change $ fn (value d!)
-                      d! cursor $ assoc state :steps $ decode-map-as value Number
+                      d! $ app.schema/Op :spin-state $ assoc state :steps (decode-map-as value Number)
                       , &unit
                 comp-slider (>> states :r1)
                   {}
@@ -89,7 +90,7 @@
                     :position $ [] 190 bottom
                     :unit 0.5
                     :on-change $ fn (value d!)
-                      d! cursor $ assoc state :r1 $ decode-map-as value Number
+                      d! $ app.schema/Op :spin-state $ assoc state :r1 (decode-map-as value Number)
                       , &unit
                 comp-slider (>> states :r2)
                   {}
@@ -98,7 +99,7 @@
                     :unit 0.5
                     :position $ [] 340 bottom
                     :on-change $ fn (value d!)
-                      d! cursor $ assoc state :r2 $ decode-map-as value Number
+                      d! $ app.schema/Op :spin-state $ assoc state :r2 (decode-map-as value Number)
                       , &unit
                 comp-slider (>> states :v1)
                   {}
@@ -107,7 +108,7 @@
                     :unit 0.001
                     :position $ [] 490 bottom
                     :on-change $ fn (value d!)
-                      d! cursor $ assoc state :v1 $ decode-map-as value Number
+                      d! $ app.schema/Op :spin-state $ assoc state :v1 (decode-map-as value Number)
                       , &unit
                 comp-slider (>> states :v2)
                   {}
@@ -116,7 +117,7 @@
                     :unit 0.001
                     :position $ [] 640 bottom
                     :on-change $ fn (value d!)
-                      d! cursor $ assoc state :v2 $ decode-map-as value Number
+                      d! $ app.schema/Op :spin-state $ assoc state :v2 (decode-map-as value Number)
                       , &unit
                 comp-slider (>> states :theta2)
                   {}
@@ -125,7 +126,7 @@
                     :unit 0.05
                     :position $ [] 790 bottom
                     :on-change $ fn (value d!)
-                      d! cursor $ assoc state :theta2 $ decode-map-as value Number
+                      d! $ app.schema/Op :spin-state $ assoc state :theta2 (decode-map-as value Number)
                       , &unit
           :examples $ []
           :schema $ quote $ Fn app.schema/Store (-> phlox.schema/PhloxElement)
@@ -197,8 +198,10 @@
             match raw-op
               (:states cursor data)
                 schema/Op :states
-                  decode-map-as cursor $ :: 'List 'Tag
+                  decode-map-as cursor $ List Tag
                   , data
+              (:spin-state state)
+                schema/Op :spin-state $ decode-map-as state app.schema/SpinState
               (:add-x) (schema/Op :add-x)
               (:tab tab)
                 schema/Op :tab $ decode-map-as tab 'Tag
@@ -209,7 +212,7 @@
                   raise |Expected-Store
               _ $ raise |Unknown-operation
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> app.schema/Op)
+          :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
           :tests $ [] $ %{} 'TestEntry (:name |anonymous-state-operation)
             :code $ quote $ let
                 original schema/store
@@ -224,14 +227,12 @@
                   assert |Preserve-original-Store $ identical? original restored
                 _ $ raise |Expected-hydrate-operation
         'dispatch! $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defn dispatch! (raw-op)
-            let
-                op $ decode-op raw-op
-              when dev? $ println |dispatch! op
-              reset! *store $ updater @*store op
+          :code $ quote $ defn dispatch! (op)
+            when dev? $ println |dispatch! op
+            reset! *store $ updater @*store op
             , &unit
           :examples $ []
-          :schema $ quote $ Fn Dynamic (-> Unit)
+          :schema $ quote $ Fn app.schema/Op (-> Unit)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             if dev? $ load-console-formatter!
@@ -257,7 +258,12 @@
           :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
-            render! (comp-container @*store) dispatch! $ {}
+            render! (comp-container @*store)
+              fn (op)
+                if (enum? op)
+                  dispatch! $ decode-op op
+                  raise |Expected-Spin-Event
+              {}
             , &unit
           :examples $ []
           :schema $ quote $ Fn (-> Unit)
@@ -277,35 +283,34 @@
       :defs $ {}
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :states
-              quote $ List Tag
-              , 'Dynamic
+            :states (List Tag) Dynamic
+            :spin-state app.schema/SpinState
             :add-x
-            :tab 'Tag
-            :hydrate-storage 'app.schema/Store
+            :tab Tag
+            :hydrate-storage app.schema/Store
           :examples $ []
           :schema $ quote EnumDef
         'SpinState $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct SpinState
-            :from $ quote $ List Number
-            :to $ quote $ List Number
-            :steps 'Number
-            :r1 'Number
-            :r2 'Number
-            :theta2 'Number
-            :v1 'Number
-            :v2 'Number
+            :from $ List Number
+            :to $ List Number
+            :steps Number
+            :r1 Number
+            :r2 Number
+            :theta2 Number
+            :v1 Number
+            :v2 Number
           :examples $ []
           :schema $ quote StructDef
         'Store $ %{} 'CodeEntry (:doc |)
-          :code $ quote $ defstruct Store (:tab 'Tag) (:x 'Number)
-            :states $ quote $ Map Tag Dynamic
+          :code $ quote $ defstruct Store (:tab Tag) (:x Number)
+            :states $ Map Tag Dynamic
           :examples $ []
           :schema $ quote StructDef
         'Trail $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Trail
-            :start $ quote $ List Number
-            :end $ quote $ List Number
+            :start $ List Number
+            :end $ List Number
           :examples $ []
           :schema $ quote StructDef
         'spin-state $ %{} 'CodeEntry (:doc |)
@@ -333,7 +338,9 @@
               (:states cursor new-state)
                 assoc store :states $ decode-map-as
                   assoc-in (:states store) (conj cursor :data) new-state
-                  :: 'Map 'Tag 'Dynamic
+                  Map Tag Dynamic
+              (:spin-state state)
+                assoc store :states $ assoc (:states store) :data state
               (:hydrate-storage restored) restored
           :examples $ []
           :schema $ quote $ Fn app.schema/Store app.schema/Op (-> app.schema/Store)
