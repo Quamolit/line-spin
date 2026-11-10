@@ -37,13 +37,7 @@
           :code $ quote $ defcomp comp-container (store)
             let
                 states $ :states store
-                state $ match (get states :data)
-                  (:none) spin-state
-                  (:some value)
-                    if (struct? value)
-                      struct-match value (SpinState checked checked)
-                        _ _ $ raise |Expected-SpinState
-                      raise |Expected-SpinState
+                state $ :spin store
                 bottom $ - (viewport-height) 40
                 from $ :from state
                 to $ :to state
@@ -172,9 +166,9 @@
             phlox.core :refer $ defcomp >> hslx container graphics g
             phlox.comp.drag-point :refer $ comp-drag-point
             phlox.comp.slider :refer $ comp-slider
-            app.schema :refer $ SpinState spin-state Trail
             js-ffi.browser :refer $ viewport-width viewport-height
             phlox.complex :as complex
+            app.schema :refer $ Trail
     'app.config $ %{} 'FileEntry
       :defs $ {}
         'dev? $ %{} 'CodeEntry (:doc |)
@@ -212,15 +206,22 @@
                   raise |Expected-Store
               _ $ raise |Unknown-operation
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> app.schema/Op)
+          :schema $ quote $ Fn AnyEnum (-> app.schema/Op) (:open :decode)
           :tests $ [] $ %{} 'TestEntry (:name |anonymous-state-operation)
             :code $ quote $ let
                 original schema/store
+                data $ {} $ :data 110
+                control-op $ decode-op $ :: :states ([] :r1) data
+                updated $ app.updater/updater original control-op
+                state $ assoc schema/spin-state :steps 225
+                root-op $ decode-op $ :: :states ([]) state
+                spun $ app.updater/updater updated root-op
               assert=
-                schema/Op :states ([] :r1)
-                  {} $ :data 110
-                decode-op $ :: :states ([] :r1)
-                  {} $ :data 110
+                schema/Op :states ([] :r1) data
+                , control-op
+              assert= (:spin original) (:spin updated)
+              assert= (:states updated) (:states spun)
+              assert= state $ :spin spun
               match
                 decode-op $ :: :hydrate-storage original
                 (:hydrate-storage restored)
@@ -305,6 +306,7 @@
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store (:tab Tag) (:x Number)
             :states $ Map Tag Dynamic
+            :spin app.schema/SpinState
           :examples $ []
           :schema $ quote StructDef
         'Trail $ %{} 'CodeEntry (:doc |)
@@ -320,7 +322,7 @@
           :schema $ quote app.schema/SpinState
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
-            Store :tab :drafts :x 0 :states $ {}
+            Store :tab :drafts :x 0 :states ({}) :spin spin-state
           :examples $ []
           :schema $ quote app.schema/Store
       :ns $ %{} 'NsEntry (:doc |)
@@ -336,11 +338,16 @@
                   , 0 $ inc (:x store)
               (:tab tab) (assoc store :tab tab)
               (:states cursor new-state)
-                assoc store :states $ decode-map-as
-                  assoc-in (:states store) (conj cursor :data) new-state
-                  Map Tag Dynamic
-              (:spin-state state)
-                assoc store :states $ assoc (:states store) :data state
+                if (empty? cursor)
+                  if (struct? new-state)
+                    struct-match new-state
+                      app.schema/SpinState state $ assoc store :spin state
+                      _ _ $ raise |Expected-SpinState
+                    raise |Expected-SpinState
+                  assoc store :states $ decode-map-as
+                    assoc-in (:states store) (conj cursor :data) new-state
+                    Map Tag Dynamic
+              (:spin-state state) (assoc store :spin state)
               (:hydrate-storage restored) restored
           :examples $ []
           :schema $ quote $ Fn app.schema/Store app.schema/Op (-> app.schema/Store)
