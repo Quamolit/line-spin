@@ -190,10 +190,16 @@
         'decode-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-op (raw-op)
             match raw-op
-              (:states cursor data)
-                schema/Op :states
-                  decode-map-as cursor $ List Tag
-                  , data
+              (:states raw-cursor data)
+                let
+                    cursor $ decode-map-as raw-cursor $ List Tag
+                  if (empty? cursor)
+                    if (struct? data)
+                      struct-match data
+                        app.schema/SpinState state $ schema/Op :spin-state state
+                        _ _ $ raise |Expected-SpinState
+                      raise |Expected-SpinState
+                    schema/Op :control-state cursor data
               (:spin-state state)
                 schema/Op :spin-state $ decode-map-as state app.schema/SpinState
               (:add-x) (schema/Op :add-x)
@@ -217,8 +223,9 @@
                 root-op $ decode-op $ :: :states ([]) state
                 spun $ app.updater/updater updated root-op
               assert=
-                schema/Op :states ([] :r1) data
+                schema/Op :control-state ([] :r1) data
                 , control-op
+              assert= (schema/Op :spin-state state) root-op
               assert= (:spin original) (:spin updated)
               assert= (:states updated) (:states spun)
               assert= state $ :spin spun
@@ -284,7 +291,7 @@
       :defs $ {}
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :states (List Tag) Dynamic
+            :control-state (List Tag) Dynamic
             :spin-state app.schema/SpinState
             :add-x
             :tab Tag
@@ -337,16 +344,10 @@
                   > (:x store) 10
                   , 0 $ inc (:x store)
               (:tab tab) (assoc store :tab tab)
-              (:states cursor new-state)
-                if (empty? cursor)
-                  if (struct? new-state)
-                    struct-match new-state
-                      app.schema/SpinState state $ assoc store :spin state
-                      _ _ $ raise |Expected-SpinState
-                    raise |Expected-SpinState
-                  assoc store :states $ decode-map-as
-                    assoc-in (:states store) (conj cursor :data) new-state
-                    Map Tag Dynamic
+              (:control-state cursor new-state)
+                assoc store :states $ decode-map-as
+                  assoc-in (:states store) (conj cursor :data) new-state
+                  Map Tag Dynamic
               (:spin-state state) (assoc store :spin state)
               (:hydrate-storage restored) restored
           :examples $ []
