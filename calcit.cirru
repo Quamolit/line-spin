@@ -149,7 +149,7 @@
                             [] (cos theta-end) (sin theta-end)
           :examples $ []
           :schema $ quote $ Fn app.schema/SpinState
-            -> $ List app.schema/Trail
+            -> $ List Trail
           :tests $ [] $ %{} 'TestEntry (:name |geometry-and-zero-steps)
             :code $ quote $ let
                 state $ app.schema/SpinState :from ([] 0 0) :to ([] 10 0) :steps 2 :r1 1 :r2 2 :theta2 0 :v1 0 :v2 0
@@ -186,7 +186,7 @@
         '*store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defref *store schema/store
           :examples $ []
-          :schema $ quote $ Ref app.schema/Store
+          :schema $ quote $ Ref schema/Store
         'decode-op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn decode-op (raw-op)
             match raw-op
@@ -206,7 +206,7 @@
                   raise |Expected-Store
               _ $ raise |Unknown-operation
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> app.schema/Op) (:open :decode)
+          :schema $ quote $ Fn AnyEnum (-> schema/Op) (:open :decode)
           :tests $ [] $ %{} 'TestEntry (:name |anonymous-state-operation)
             :code $ quote $ let
                 original schema/store
@@ -233,7 +233,7 @@
             reset! *store $ updater @*store op
             , &unit
           :examples $ []
-          :schema $ quote $ Fn app.schema/Op (-> Unit)
+          :schema $ quote $ Fn schema/Op (-> Unit)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             if dev? $ load-console-formatter!
@@ -319,12 +319,12 @@
           :code $ quote $ def spin-state
             SpinState :from ([] 100 200) :to ([] 800 200) :steps 200 :r1 100 :r2 80 :theta2 100 :v1 0.18 :v2 1
           :examples $ []
-          :schema $ quote app.schema/SpinState
+          :schema $ quote SpinState
         'store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def store
             Store :tab :drafts :x 0 :states ({}) :spin spin-state
           :examples $ []
-          :schema $ quote app.schema/Store
+          :schema $ quote Store
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.schema
     'app.updater $ %{} 'FileEntry
@@ -350,7 +350,7 @@
               (:spin-state state) (assoc store :spin state)
               (:hydrate-storage restored) restored
           :examples $ []
-          :schema $ quote $ Fn app.schema/Store app.schema/Op (-> app.schema/Store)
+          :schema $ quote $ Fn Store Op (-> Store)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.updater
           :require $ app.schema :refer $ Store Op
