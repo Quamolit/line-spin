@@ -33,6 +33,12 @@
           :require $ |fontfaceobserver-es :default FontFaceObserver
     'app.comp.container $ %{} 'FileEntry
       :defs $ {}
+        'add-endpoint $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defn add-endpoint (center offset)
+            let[] (x y) center $ let[] (dx dy) offset $ [] (+ x dx) (+ y dy)
+          :examples $ []
+          :schema $ quote $ Fn (List Number) (List Number)
+            -> $ Tuple Number Number
         'comp-container $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defcomp comp-container (store)
             let
@@ -141,10 +147,10 @@
                           theta-end $ + (:theta2 state)
                             * idx $ :v2 state
                         Trail :start
-                          complex/add center $ complex/times
+                          add-endpoint center $ complex/times
                             [] (:r1 state) 0
                             [] (cos theta-from) (sin theta-from)
-                          , :end $ complex/add center $ complex/times
+                          , :end $ add-endpoint center $ complex/times
                             [] (:r2 state) 0
                             [] (cos theta-end) (sin theta-end)
           :examples $ []
@@ -254,7 +260,7 @@
             reset! *store $ updater @*store op
             , &unit
           :examples $ []
-          :schema $ quote $ Fn schema/Op (-> Unit)
+          :schema $ quote $ Fn schema/Op (-> Unit) (:features :io :state)
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             if dev? $ load-console-formatter!
@@ -265,7 +271,7 @@
             println "|App Started"
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'reload! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn reload! ()
             if (js-nullish? build-errors)
@@ -277,7 +283,7 @@
               hud! |error build-errors
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit) (:features :js-ffi)
+          :schema $ quote $ Fn (-> Unit) (:features :io :js-ffi :state)
         'render-app! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn render-app! ()
             render! (comp-container @*store)
@@ -288,7 +294,7 @@
               {}
             , &unit
           :examples $ []
-          :schema $ quote $ Fn (-> Unit)
+          :schema $ quote $ Fn (-> Unit) (:features :io :state)
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.main
           :require
@@ -344,8 +350,8 @@
           :schema $ quote StructDef
         'Trail $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Trail
-            :start $ List Number
-            :end $ List Number
+            :start $ Tuple Number Number
+            :end $ Tuple Number Number
           :examples $ []
           :schema $ quote StructDef
         'spin-state $ %{} 'CodeEntry (:doc |)
