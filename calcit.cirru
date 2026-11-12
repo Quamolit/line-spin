@@ -199,7 +199,7 @@
                         app.schema/SpinState state $ schema/Op :spin-state state
                         _ _ $ raise |Expected-SpinState
                       raise |Expected-SpinState
-                    schema/Op :control-state cursor data
+                    schema/Op :control-state cursor $ decode-map-as data $ Map Tag schema/ControlField
               (:spin-state state)
                 schema/Op :spin-state $ decode-map-as state app.schema/SpinState
               (:add-x) (schema/Op :add-x)
@@ -213,27 +213,40 @@
               _ $ raise |Unknown-operation
           :examples $ []
           :schema $ quote $ Fn AnyEnum (-> schema/Op) (:open :decode)
-          :tests $ [] $ %{} 'TestEntry (:name |anonymous-state-operation)
-            :code $ quote $ let
-                original schema/store
-                data $ {} $ :data 110
-                control-op $ decode-op $ :: :states ([] :r1) data
-                updated $ app.updater/updater original control-op
-                state $ assoc schema/spin-state :steps 225
-                root-op $ decode-op $ :: :states ([]) state
-                spun $ app.updater/updater updated root-op
-              assert=
-                schema/Op :control-state ([] :r1) data
-                , control-op
-              assert= (schema/Op :spin-state state) root-op
-              assert= (:spin original) (:spin updated)
-              assert= (:states updated) (:states spun)
-              assert= state $ :spin spun
-              match
-                decode-op $ :: :hydrate-storage original
-                (:hydrate-storage restored)
-                  assert |Preserve-original-Store $ identical? original restored
-                _ $ raise |Expected-hydrate-operation
+          :tests $ []
+            %{} 'TestEntry (:name |anonymous-state-operation)
+              :code $ quote $ let
+                  original schema/store
+                  data $ {} $ :data 110
+                  control-op $ decode-op $ :: :states ([] :r1) data
+                  updated $ app.updater/updater original control-op
+                  state $ assoc schema/spin-state :steps 225
+                  root-op $ decode-op $ :: :states ([]) state
+                  spun $ app.updater/updater updated root-op
+                assert=
+                  schema/Op :control-state ([] :r1) data
+                  , control-op
+                assert= (schema/Op :spin-state state) root-op
+                assert= (:spin original) (:spin updated)
+                assert= (:states updated) (:states spun)
+                assert= state $ :spin spun
+                match
+                  decode-op $ :: :hydrate-storage original
+                  (:hydrate-storage restored)
+                    assert |Preserve-original-Store $ identical? original restored
+                  _ $ raise |Expected-hydrate-operation
+            %{} 'TestEntry (:name |drag-point-control-state)
+              :code $ quote $ let
+                  payload $ {} (:dragging? true)
+                    :x0 $ [] 2 3
+                    :p0 $ [] 8 9
+                match
+                  decode-op $ :: :states ([] :from) payload
+                  (:control-state cursor data)
+                    do
+                      assert= ([] :from) cursor
+                      assert= payload data
+                  _ $ raise |Expected-control-state
         'dispatch! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn dispatch! (op)
             when dev? $ println |dispatch! op
@@ -289,9 +302,17 @@
             app.browser :refer $ wait-for-font!
     'app.schema $ %{} 'FileEntry
       :defs $ {}
+        'ControlField $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion ControlField Number Bool (List Number)
+          :examples $ []
+          :schema $ quote UnionDef
+        'ControlNode $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion ControlNode ControlField (Map Tag ControlNode)
+          :examples $ []
+          :schema $ quote UnionDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
-            :control-state (List Tag) Dynamic
+            :control-state (List Tag) (Map Tag ControlField)
             :spin-state app.schema/SpinState
             :add-x
             :tab Tag
@@ -312,7 +333,7 @@
           :schema $ quote StructDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store (:tab Tag) (:x Number)
-            :states $ Map Tag Dynamic
+            :states $ Map Tag ControlNode
             :spin app.schema/SpinState
           :examples $ []
           :schema $ quote StructDef
@@ -347,7 +368,7 @@
               (:control-state cursor new-state)
                 assoc store :states $ decode-map-as
                   assoc-in (:states store) (conj cursor :data) new-state
-                  Map Tag Dynamic
+                  Map Tag app.schema/ControlNode
               (:spin-state state) (assoc store :spin state)
               (:hydrate-storage restored) restored
           :examples $ []
