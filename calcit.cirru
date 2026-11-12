@@ -306,6 +306,10 @@
           :code $ quote $ defunion ControlField Number Bool (List Number)
           :examples $ []
           :schema $ quote UnionDef
+        'ControlNode $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion ControlNode ControlField (Map Tag ControlNode)
+          :examples $ []
+          :schema $ quote UnionDef
         'Op $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defenum Op
             :control-state (List Tag) (Map Tag ControlField)
@@ -329,7 +333,7 @@
           :schema $ quote StructDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store (:tab Tag) (:x Number)
-            :states $ Map Tag Dynamic
+            :states $ Map Tag ControlNode
             :spin app.schema/SpinState
           :examples $ []
           :schema $ quote StructDef
@@ -364,7 +368,7 @@
               (:control-state cursor new-state)
                 assoc store :states $ decode-map-as
                   assoc-in (:states store) (conj cursor :data) new-state
-                  Map Tag Dynamic
+                  Map Tag app.schema/ControlNode
               (:spin-state state) (assoc store :spin state)
               (:hydrate-storage restored) restored
           :examples $ []
