@@ -3,7 +3,7 @@ Line Spin
 
 ### 使用者影响
 
-本地开发使用正式 Calcit CLI 和 `@calcit/procs` **0.41.1**。升级后请重装依赖、编译并刷新。轨迹公式、默认参数、滑块、端点和页面 `hud!` 提示保持原行为。
+本地开发使用正式 Calcit CLI 和 `@calcit/procs` **0.42.0**。升级后请重装依赖、编译并刷新。轨迹公式、默认参数、滑块、端点和页面 `hud!` 提示保持原行为。
 
 依赖配对 Phlox 0.9.3、Touch Control 0.0.39、JS FFI 0.2.13 和 Pointed Prompt 0.0.27。八个应用控件传递具名 `SpinState`，Phlox 的匿名游标事件在渲染入口解码。轨迹继续使用 `Trail`，状态使用 `Store`。原 CSS 来源保持。
 

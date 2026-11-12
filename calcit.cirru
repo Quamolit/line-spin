@@ -175,10 +175,12 @@
           :code $ quote $ def dev?
             = |dev $ .unwrap-or (get-env |mode) |release
           :examples $ []
+          :schema $ quote Bool
         'site $ %{} 'CodeEntry (:doc |)
           :code $ quote $ def site
             {} (:dev-ui |http://localhost:8100/main-fonts.css) (:release-ui |http://cdn.tiye.me/favored-fonts/main-fonts.css) (:cdn-url |http://cdn.tiye.me/line-spin/) (:title "|Line Spin") (:icon |http://cdn.tiye.me/logo/quamolit.png) (:storage-key |line-spin)
           :examples $ []
+          :schema $ quote $ Map Tag String
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.config
     'app.main $ %{} 'FileEntry
@@ -193,13 +195,12 @@
               (:states raw-cursor data)
                 let
                     cursor $ decode-map-as raw-cursor $ List Tag
-                  if (empty? cursor)
-                    if (struct? data)
-                      struct-match data
-                        app.schema/SpinState state $ schema/Op :spin-state state
-                        _ _ $ raise |Expected-SpinState
-                      raise |Expected-SpinState
-                    schema/Op :control-state cursor $ decode-map-as data $ Map Tag schema/ControlField
+                    payload $ decode-map-as data schema/StateEventPayload
+                  match payload
+                    (SpinState state)
+                      if (empty? cursor) (schema/Op :spin-state state) (raise |Expected-ControlState)
+                    (Map fields)
+                      if (empty? cursor) (raise |Expected-SpinState) (schema/Op :control-state cursor fields)
               (:spin-state state)
                 schema/Op :spin-state $ decode-map-as state app.schema/SpinState
               (:add-x) (schema/Op :add-x)
@@ -331,6 +332,10 @@
             :v2 Number
           :examples $ []
           :schema $ quote StructDef
+        'StateEventPayload $ %{} 'CodeEntry (:doc |)
+          :code $ quote $ defunion StateEventPayload SpinState (Map Tag ControlField)
+          :examples $ []
+          :schema $ quote UnionDef
         'Store $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defstruct Store (:tab Tag) (:x Number)
             :states $ Map Tag ControlNode
