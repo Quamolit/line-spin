@@ -219,7 +219,7 @@
                   raise |Expected-Store
               _ $ raise |Unknown-operation
           :examples $ []
-          :schema $ quote $ Fn AnyEnum (-> schema/Op) (:open :decode)
+          :schema $ quote $ Fn Input (-> schema/Op) (:generics Input)
           :tests $ []
             %{} 'TestEntry (:name |anonymous-state-operation)
               :code $ quote $ let
