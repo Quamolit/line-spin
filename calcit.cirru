@@ -264,7 +264,7 @@
         'main! $ %{} 'CodeEntry (:doc |)
           :code $ quote $ defn main! ()
             if dev? $ load-console-formatter!
-            wait-for-font! render-app!
+            wait-for-font! $ fn () $ render-app!
             add-watch! *store :change $ fn (store prev) (render-app!)
             render-control!
             start-control-loop! 8 on-control-event
