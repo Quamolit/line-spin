@@ -52,15 +52,13 @@
                 {} $ :position $ []
                   - 0 $ * 0.5 $ viewport-width
                   - 0 $ * 0.5 $ viewport-height
-                graphics $ {} $ :ops
+                path-graphics-with ({})
                   concat
-                    [] $ g :line-style $ {} (:width 1)
-                      :color $ hslx 0 0 80
-                      :alpha 1
+                    [] $ PathOp :line-style (hslx 0 0 80) 1 1
                     -> trails rest $ mapcat $ fn (line)
                       []
-                        g :move-to $ :start line
-                        g :line-to $ :end line
+                        PathOp :move-to $ :start line
+                        PathOp :line-to $ :end line
                 comp-drag-point (>> states :from)
                   {} (:position from) (:unit 1) (:title |From) (:radius 4)
                     :on-change $ fn (position d!)
@@ -169,7 +167,8 @@
       :ns $ %{} 'NsEntry (:doc |)
         :code $ quote $ ns app.comp.container
           :require
-            phlox.core :refer $ defcomp >> hslx container graphics g
+            phlox.core :refer $ defcomp >> hslx container path-graphics-with
+            phlox.schema :refer $ PathOp
             phlox.comp.drag-point :refer $ comp-drag-point
             phlox.comp.slider :refer $ comp-slider
             js-ffi.browser :refer $ viewport-width viewport-height
